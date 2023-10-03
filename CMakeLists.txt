@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD 99)
 set(C_VERSION_NAME "c_std_${CMAKE_C_STANDARD}")
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
@@ -20,7 +20,7 @@ set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_
 set(PROJECT_FULL_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.${PROJECT_VERSION_TWEAK}.${PROJECT_VERSION_SUFFIX})
 
 # CREATING PROJECT.
-project(C-DURLIB-LIBRARY VERSION ${PROJECT_VERSION})
+project(C-DURLIB-LIBRARY VERSION ${PROJECT_VERSION} LANGUAGES C)
 
 # RUN SETUP.PY TO ASSIGN BUILD TYPE.
 # execute_process(
@@ -146,25 +146,36 @@ endif()
 if(COMPILATION_PLATFORM STREQUAL "WIN32")
         # ADD SOURCE FILES
         # C-DURLIB .C FILES
-        # file(GLOB_RECURSE C-DURLIB_C
+        file(GLOB_RECURSE C-DURLIB_C
+                "${PROJECT_SOURCE_DIR}/c-durlib/src/log/*.c"
+        )
 
-        # # "${PROJECT_SOURCE_DIR}/c-durlib/src/"
-        # )
+        # C-DURLIB .H FILES
+        file(GLOB_RECURSE C-DURLIB_H
+                "${PROJECT_SOURCE_DIR}/c-durlib/src/log/*.h"
+        )
 
-        # # C-DURLIB .H FILES
-        # file(GLOB_RECURSE C-DURLIB_H
+        # C-DURLIB TESTING .C FILES
+        file(GLOB_RECURSE C-DURLIB-TESTING_C
 
-        # # "${PROJECT_SOURCE_DIR}/c-durlib/src/"
-        # )
+                "${PROJECT_SOURCE_DIR}/c-durlib/src/testing/*.c"
+        )
 
-        # if(${VERBOSE})
-        # message(STATUS "C-DURLIB SOURCE FILES ADDED.")
-        # endif()
+        # C-DURLIB TESTING .H FILES
+        file(GLOB_RECURSE C-DURLIB-TESTING_H
+
+                "${PROJECT_SOURCE_DIR}/c-durlib/src/testing/*.h"
+        )
+
+        if(${VERBOSE})
+                message(STATUS "C-DURLIB SOURCE FILES ADDED.")
+        endif()
 
         # add_library(C-DURLIB STATIC ${C-DURLIB_C})
         add_executable(C-DURLIB
 
-                # ${C-DURLIB_C} ${C-DURLIB_H}
+                ${C-DURLIB_C} ${C-DURLIB_H}
+                ${C-DURLIB-TESTING_C} ${C-DURLIB-TESTING_H}
                 "${PROJECT_SOURCE_DIR}/c-durlib/src/main.c")
         target_compile_features(C-DURLIB PUBLIC ${C_VERSION_NAME})
         set_target_properties(C-DURLIB PROPERTIES VERSION ${PROJECT_FULL_VERSION})
