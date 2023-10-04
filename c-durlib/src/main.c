@@ -2,7 +2,7 @@
 
 int main()
 {
-    log_init_cli();
+    LogInitCli();
 
     CLI_TRACE("Hello, World!");
     CLI_DEBUG("TEST");

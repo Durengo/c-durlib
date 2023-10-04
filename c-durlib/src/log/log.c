@@ -1,36 +1,40 @@
 #include "log.h"
+
+#ifdef C_DURLIB_PLATFORM_WINDOWS
 #include <windows.h>
+#endif
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
 
 // Declared in log.h
-const LogTag cli_tag = CLI;
+const LogTag const_CliTag = CLI;
 
-DLogger *g_cli_logger = NULL;
+DLogger *CliLoggerInstance = NULL;
 
 #ifdef C_DURLIB_PLATFORM_WINDOWS
-_Bool g_is_console_initialized = false;
-HANDLE m_hConsole = NULL;
-WORD m_originalConsoleAttributes = 0;
+_Bool b_IsCliLoggerInitialized = false;
+HANDLE p_ConsoleInstance = NULL;
+WORD word_OriginalConsoleAttributes = 0;
 #endif
 
 #ifdef C_DURLIB_PLATFORM_WINDOWS
 void InitializeConsole()
 {
-    if (!g_is_console_initialized)
+    if (!b_IsCliLoggerInitialized)
     {
-        m_hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        p_ConsoleInstance = GetStdHandle(STD_OUTPUT_HANDLE);
         CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-        GetConsoleScreenBufferInfo(m_hConsole, &consoleInfo);
-        m_originalConsoleAttributes = consoleInfo.wAttributes;
-        g_is_console_initialized = true;
+        GetConsoleScreenBufferInfo(p_ConsoleInstance, &consoleInfo);
+        word_OriginalConsoleAttributes = consoleInfo.wAttributes;
+        b_IsCliLoggerInitialized = true;
     }
 }
 
 void ResetConsoleColor()
 {
-    SetConsoleTextAttribute(m_hConsole, m_originalConsoleAttributes);
+    SetConsoleTextAttribute(p_ConsoleInstance, word_OriginalConsoleAttributes);
 }
 
 void SetConsoleColor(LogLevel l_level)
@@ -64,57 +68,65 @@ void SetConsoleColor(LogLevel l_level)
         attributes = FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
         break;
     }
-    SetConsoleTextAttribute(m_hConsole, attributes);
+    SetConsoleTextAttribute(p_ConsoleInstance, attributes);
 }
 #endif
 
-DLogger *log_init()
+DLogger *LogInit()
 {
     DLogger *logger = (DLogger *)malloc(sizeof(DLogger));
     logger->m_exists = true;
-
+#ifdef C_DURLIB_PLATFORM_WINDOWS
     InitializeConsole();
-
+#endif
     return logger;
 }
 
-void log_init_cli()
+void LogInitCli()
 {
-    g_cli_logger = (DLogger *)malloc(sizeof(DLogger));
-    g_cli_logger->m_exists = true;
-
-    InitializeConsole();
-}
-
-void log_message(DLogger *l_logger, LogLevel l_level, const char *l_message)
-{
-    if (!l_logger->m_exists)
-        return;
-
-    char *msg = (char *)malloc(sizeof(char) * (strlen(LogLevelStrings[l_level]) + 1));
-    strcpy(msg, LogLevelStrings[l_level]);
-    strcat(msg, " ");
-    strcat(msg, l_message);
-    strcat(msg, "\n");
+    CliLoggerInstance = (DLogger *)malloc(sizeof(DLogger));
+    CliLoggerInstance->m_exists = true;
 #ifdef C_DURLIB_PLATFORM_WINDOWS
-    WriteConsole(GetStdHandle(STD_OUTPUT_HANDLE), msg, strlen(msg), NULL, NULL);
-    return;
-#else
-    printf("%s", msg);
-    return;
+    InitializeConsole();
 #endif
 }
 
-void log_message_with_prefix(DLogger *l_logger, LogTag l_log_tag, LogLevel l_level, const char *l_message)
+void LogMessage(DLogger *l_logger, LogLevel l_level, const char *l_message)
 {
     if (!l_logger->m_exists)
         return;
 
-    // LogTag + LogLevel + l_message + 4 brackets + 3 spaces + 1 newline
-    size_t required_size = strlen(LogTagStrings[l_log_tag]) + strlen(LogLevelStrings[l_level]) + strlen(l_message) + 4 + 3 + 1;
-    
+    // LogLevel + l_message + 2 brackets + 3 spaces + 1 newline
+    size_t required_size = strlen(LogLevelStrings[l_level]) + strlen(l_message) + 2 + 1 + 1;
+
     // + 1 null terminator
     char *msg = (char *)malloc(required_size + 1);
+
+    if (msg)
+    {
+        snprintf(msg, required_size, "[%s] %s\n", LogLevelStrings[l_level], l_message);
+
+#ifdef C_DURLIB_PLATFORM_WINDOWS
+        SetConsoleColor(l_level);
+        WriteConsole(p_ConsoleInstance, msg, strlen(msg), NULL, NULL);
+        ResetConsoleColor();
+#else
+        printf("%s", msg);
+#endif
+
+        free(msg);
+    }
+}
+
+void LogMessageWithPrefix(DLogger *l_logger, LogTag l_log_tag, LogLevel l_level, const char *l_message)
+{
+    if (!l_logger->m_exists)
+        return;
+
+    // LogTag + LogLevel + l_message + 4 brackets + 2 whitespaces + 1 newline + 1 null terminator
+    size_t required_size = strlen(LogTagStrings[l_log_tag]) + strlen(LogLevelStrings[l_level]) + strlen(l_message) + 4 + 2 + 1 + 1;
+
+    char *msg = (char *)malloc(required_size);
 
     if (msg)
     {
@@ -122,7 +134,7 @@ void log_message_with_prefix(DLogger *l_logger, LogTag l_log_tag, LogLevel l_lev
 
 #ifdef C_DURLIB_PLATFORM_WINDOWS
         SetConsoleColor(l_level);
-        WriteConsole(GetStdHandle(STD_OUTPUT_HANDLE), msg, strlen(msg), NULL, NULL);
+        WriteConsole(p_ConsoleInstance, msg, strlen(msg), NULL, NULL);
         ResetConsoleColor();
 #else
         printf("%s", msg);
@@ -134,11 +146,11 @@ void log_message_with_prefix(DLogger *l_logger, LogTag l_log_tag, LogLevel l_lev
 
 void log_close_cli()
 {
-    if (g_cli_logger == NULL)
+    if (CliLoggerInstance == NULL)
         return;
 
-    log_close(g_cli_logger);
-    g_cli_logger = NULL;
+    log_close(CliLoggerInstance);
+    CliLoggerInstance = NULL;
 }
 
 void log_close(DLogger *l_logger)
